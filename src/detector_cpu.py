@@ -6,7 +6,6 @@ import queue
 import argparse
 import json
 
-import towhee
 from pymilvus import connections
 from pymilvus import CollectionSchema, FieldSchema, DataType, Collection
 import redis
@@ -14,8 +13,8 @@ import redis
 
 from img2vec_pytorch import Img2Vec
 from PIL import Image
-import numpy as np
-import torch
+
+from LabelStudioClient import LabelStudioClient
 
 from flask import Flask
 from flask import request
@@ -28,7 +27,7 @@ connections.connect(host="milvus-standalone", port=19530)
 red = redis.Redis(host='redis', port=6379, db=0)
 red.flushdb()
 collection_name = "image_similarity_search"
-dim = 2048
+dim = 512
 default_fields = [
     FieldSchema(name="id", dtype=DataType.INT64, is_primary=True, auto_id=True),
     FieldSchema(name="vector", dtype=DataType.FLOAT_VECTOR, dim=dim)
@@ -56,32 +55,41 @@ def submit_image():
 
 def worker():
     f = 0
+    img2vec = Img2Vec(cuda=False)
     while True:        
         item = q.get()
 
         print(f'Working on {item}')
-        #  paths = towhee.glob(item).to_list()
-        # vectors = towhee.glob(item).exception_safe() \
-        #                 .image_decode() \
-        #                 .image_embedding.timm(model_name="resnet50") \
-        #                 .drop_empty() \
-        #                 .tensor_normalize() \
-        #                 .to_list()
-
-        # Initialize Img2Vec with GPU
-        img2vec = Img2Vec(cuda=False)
 
         # Read in an image (rgb format)
         img = Image.open(item)
         # Get a vector from img2vec, returned as a torch FloatTensor
-        vec = img2vec.get_vec(img, tensor=True)
-        print(vec)
+        vec = img2vec.get_vec(img, tensor=False)
+        # print(vec.shape)
+
+        search_param = {
+        "data": [vec],
+        "anns_field": 'vector',
+        "param": {"metric_type": 'L2', "params": {"nprobe": 16}},
+        "limit": 3}
         
-        mr = collection.insert([vec])
-        ids = mr.primary_keys
-        print(ids)
-        #for x in range(len(ids)):
-        #    red.set(str(ids[x]), paths[x])
+        insert = True
+        results = collection.search(**search_param)
+        for i, result in enumerate(results):
+            print("\nSearch result for {}th vector: ".format(i))
+            for j, res in enumerate(result):
+                print("Top {}: {}".format(j, res))
+                
+                if res.distance < 2:
+                    insert = False
+                    break
+        if insert == True:
+            mr = collection.insert([[vec]])
+            ids = mr.primary_keys
+            LabelStudioClient.create_task_with_file(item,1)
+            # print(ids)
+            # for x in range(len(ids)):
+            #     red.set(str(ids[x]), paths[x])
     
         print(f'Finished {item}')
         q.task_done()
