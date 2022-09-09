@@ -1,3 +1,3 @@
-# Fall Detection
+# Laptop Monitor
 
-Repo to port [Human-Falling-Detect-Tracks](https://github.com/GajuuzZ/Human-Falling-Detect-Tracks) to SharpAI-Hub.
+Use AI to help kids get rid of misusing their laptops.
