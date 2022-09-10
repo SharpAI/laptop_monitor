@@ -76,7 +76,6 @@ def submit_image():
         #     red.set(str(ids[x]), paths[x])
 
         os.remove(filename)
-        return 'ok', 200
-
+    return 'ok', 200
 
 app.run(host='0.0.0.0', port=3000)
