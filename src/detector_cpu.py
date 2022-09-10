@@ -20,7 +20,7 @@ from flask import jsonify
 app = Flask(__name__)
 q = queue.Queue(1)
 
-connections.connect(host="milvus-standalone", port=19530)
+connections.connect(host="milvus", port=19530)
 red = redis.Redis(host='redis', port=6379, db=0)
 red.flushdb()
 collection_name = "image_similarity_search"
