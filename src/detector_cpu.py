@@ -5,7 +5,7 @@ import json
 
 from pymilvus import connections
 from pymilvus import CollectionSchema, FieldSchema, DataType, Collection
-# import redis
+import redis
 
 
 from img2vec_pytorch import Img2Vec
@@ -21,8 +21,8 @@ app = Flask(__name__)
 q = queue.Queue(1)
 
 connections.connect(host="milvus-standalone", port=19530)
-# red = redis.Redis(host='redis', port=6379, db=0)
-# red.flushdb()
+red = redis.Redis(host='redis', port=6379, db=0)
+red.flushdb()
 collection_name = "image_similarity_search"
 dim = 512
 default_fields = [
@@ -35,6 +35,8 @@ default_index = {"index_type": "IVF_SQ8", "params": {"nlist": 512}, "metric_type
 collection.create_index(field_name="vector", index_params=default_index)
 collection.load()
 
+img2vec = Img2Vec(cuda=False)
+
 @app.route('/submit/image', methods=['POST'])
 def submit_image():
     json_data = json.loads(request.data)
@@ -43,56 +45,38 @@ def submit_image():
     filename = json_data['filename']
     print(f'filename: {filename}, camera_id: {camera_id}')
 
-    try:
-        q.put_nowait(filename)
-        return 'processing', 200
-    except:
+    # Read in an image (rgb format)
+    img = Image.open(filename)
+    # Get a vector from img2vec, returned as a torch FloatTensor
+    vec = img2vec.get_vec(img, tensor=False)
+    # print(vec.shape)
+
+    search_param = {
+    "data": [vec],
+    "anns_field": 'vector',
+    "param": {"metric_type": 'L2', "params": {"nprobe": 16}},
+    "limit": 3}
+    
+    insert = True
+    results = collection.search(**search_param)
+    for i, result in enumerate(results):
+        print("\nSearch result for {}th vector: ".format(i))
+        for j, res in enumerate(result):
+            print("Top {}: {}".format(j, res))
+            
+            if res.distance < 2:
+                insert = False
+                break
+    if insert == True:
+        mr = collection.insert([[vec]])
+        ids = mr.primary_keys
+        LabelStudioClient.create_task_with_file(filename)
+        # print(ids)
+        # for x in range(len(ids)):
+        #     red.set(str(ids[x]), paths[x])
+
         os.remove(filename)
-        return 'skip frame', 200
+        return 'ok', 200
 
-def worker():
-    f = 0
-    img2vec = Img2Vec(cuda=False)
-    while True:        
-        item = q.get()
-
-        print(f'Working on {item}')
-
-        # Read in an image (rgb format)
-        img = Image.open(item)
-        # Get a vector from img2vec, returned as a torch FloatTensor
-        vec = img2vec.get_vec(img, tensor=False)
-        # print(vec.shape)
-
-        search_param = {
-        "data": [vec],
-        "anns_field": 'vector',
-        "param": {"metric_type": 'L2', "params": {"nprobe": 16}},
-        "limit": 3}
-        
-        insert = True
-        results = collection.search(**search_param)
-        for i, result in enumerate(results):
-            print("\nSearch result for {}th vector: ".format(i))
-            for j, res in enumerate(result):
-                print("Top {}: {}".format(j, res))
-                
-                if res.distance < 2:
-                    insert = False
-                    break
-        if insert == True:
-            mr = collection.insert([[vec]])
-            ids = mr.primary_keys
-            LabelStudioClient.create_task_with_file(item)
-            # print(ids)
-            # for x in range(len(ids)):
-            #     red.set(str(ids[x]), paths[x])
-    
-        print(f'Finished {item}')
-        q.task_done()
-    
-
-# Turn-on the worker thread.
-threading.Thread(target=worker, daemon=True).start()
 
 app.run(host='0.0.0.0', port=3000)
