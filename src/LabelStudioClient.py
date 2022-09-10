@@ -5,10 +5,11 @@ import logging
 
 labelstudio_url = os.environ['LABEL_STUDIO_URL']
 labelstudio_token = os.environ['LABEL_STUDIO_TOKEN']
+labelstudio_pid = os.environ['LABEL_STUDIO_PROJECT_ID']
 
 class LabelStudioClient:
     @staticmethod
-    def upload_file(file_path,project_id):
+    def upload_file(file_path):
         random_uuid4_str = str(uuid.uuid4())
         dst_filename = random_uuid4_str+'.jpg'
 
@@ -22,7 +23,7 @@ class LabelStudioClient:
         auth_header = {'Authorization' : 'Token {}'.format(labelstudio_token)}
         param = {'commit_to_project': 'false'}
         files = {'file': open(filepath, 'rb')}
-        get_task_url = f"{labelstudio_url}/api/projects/{project_id}/import"
+        get_task_url = f"{labelstudio_url}/api/projects/{labelstudio_pid}/import"
 
         response = requests.post(get_task_url,files=files, params=param,headers=auth_header)
         os.unlink(dst_filename)
@@ -45,8 +46,8 @@ class LabelStudioClient:
             logging.error("Error uploading file!")
         return None
     @staticmethod
-    def create_task_with_file(file_path,project_id):
-        resp = LabelStudioClient.upload_file(file_path,project_id)
+    def create_task_with_file(file_path):
+        resp = LabelStudioClient.upload_file(file_path,labelstudio_pid)
         if resp != None:
             fileurl = '/data/' + resp['file']
             task_json = [{
@@ -57,7 +58,7 @@ class LabelStudioClient:
             ]
 
             auth_header = {'Authorization' : f'Token {labelstudio_token}'}
-            task_url = f"{labelstudio_url}/api/projects/{project_id}/import"
+            task_url = f"{labelstudio_url}/api/projects/{labelstudio_pid}/import"
             response = requests.post(task_url, json=task_json,  headers=auth_header)
             if response.ok:
                 created_task = response.json()
@@ -71,5 +72,5 @@ if __name__ == '__main__':
     # resp = LabelStudioClient.upload_file('./img.jpg',1)
     # print(resp)
     
-    resp =LabelStudioClient.create_task_with_file('./img.jpg',1)
+    resp =LabelStudioClient.create_task_with_file('./img.jpg')
     print(resp)

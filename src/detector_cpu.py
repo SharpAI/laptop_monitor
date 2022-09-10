@@ -1,14 +1,11 @@
 import os
-import cv2
-import time
 import threading
 import queue
-import argparse
 import json
 
 from pymilvus import connections
 from pymilvus import CollectionSchema, FieldSchema, DataType, Collection
-import redis
+# import redis
 
 
 from img2vec_pytorch import Img2Vec
@@ -24,8 +21,8 @@ app = Flask(__name__)
 q = queue.Queue(1)
 
 connections.connect(host="milvus-standalone", port=19530)
-red = redis.Redis(host='redis', port=6379, db=0)
-red.flushdb()
+# red = redis.Redis(host='redis', port=6379, db=0)
+# red.flushdb()
 collection_name = "image_similarity_search"
 dim = 512
 default_fields = [
@@ -86,7 +83,7 @@ def worker():
         if insert == True:
             mr = collection.insert([[vec]])
             ids = mr.primary_keys
-            LabelStudioClient.create_task_with_file(item,1)
+            LabelStudioClient.create_task_with_file(item)
             # print(ids)
             # for x in range(len(ids)):
             #     red.set(str(ids[x]), paths[x])

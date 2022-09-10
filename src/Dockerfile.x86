@@ -82,6 +82,7 @@ ADD ./requirements.txt /app/requirements.txt
 RUN pip install -r /app/requirements.txt
 RUN pip install img2vec_pytorch
 ADD ./detector_cpu.py /app/detector.py
+ADD ./LabelStudioClient.py /app/LabelStudioClient.py 
 
 
 CMD ["/app/docker-novnc/entrypoint.sh"]
