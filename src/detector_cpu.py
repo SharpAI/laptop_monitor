@@ -3,10 +3,10 @@ import threading
 import queue
 import json
 
-from pymilvus import connections
-from pymilvus import CollectionSchema, FieldSchema, DataType, Collection
-import redis
+from pymilvus import (connections, CollectionSchema, 
+                      FieldSchema, DataType, Collection, utility)
 
+import redis
 
 from img2vec_pytorch import Img2Vec
 from PIL import Image
@@ -24,6 +24,7 @@ connections.connect(host="milvus", port=19530)
 red = redis.Redis(host='redis', port=6379, db=0)
 red.flushdb()
 collection_name = "image_similarity_search"
+
 dim = 512
 default_fields = [
     FieldSchema(name="id", dtype=DataType.INT64, is_primary=True, auto_id=True),
@@ -31,8 +32,10 @@ default_fields = [
 ]
 default_schema = CollectionSchema(fields=default_fields, description="Image test collection")
 collection = Collection(name=collection_name, schema=default_schema)
-default_index = {"index_type": "IVF_SQ8", "params": {"nlist": 512}, "metric_type": "L2"}
-collection.create_index(field_name="vector", index_params=default_index)
+
+if not utility.has_collection(collection_name):
+    default_index = {"index_type": "IVF_SQ8", "params": {"nlist": 512}, "metric_type": "L2"}
+    collection.create_index(field_name="vector", index_params=default_index)
 collection.load()
 
 img2vec = Img2Vec(cuda=False)
