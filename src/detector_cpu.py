@@ -40,7 +40,31 @@ if not utility.has_collection(collection_name):
 collection.load()
 
 img2vec = Img2Vec(cuda=False)
+import threading
+import queue
 
+q = queue.Queue(1)
+
+def worker():
+    cv2.namedWindow("Screen", cv2.WINDOW_NORMAL)
+    cv2.setWindowProperty("Screen", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+    
+    while True:
+        item = q.get()
+        print(f'Working on {item}')
+        
+        img = cv2.imread(item, cv2.IMREAD_ANYCOLOR)
+        cv2.imshow("Screen", img)
+
+        if cv2.waitKey(25) & 0xFF == ord('q'):
+            cv2.destroyAllWindows()
+            cv2.namedWindow("Screen", cv2.WINDOW_NORMAL)
+            cv2.setWindowProperty("Screen", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+    
+        print(f'Finished {item}')
+        q.task_done()
+        os.remove(item)
+        
 @app.route('/submit/image', methods=['POST'])
 def submit_image():
     json_data = json.loads(request.data)
@@ -78,14 +102,13 @@ def submit_image():
         # print(ids)
         # for x in range(len(ids)):
         #     red.set(str(ids[x]), paths[x])
-
-        # img = cv2.imread(filename, cv2.IMREAD_ANYCOLOR)
-        # cv2.namedWindow("Screen", cv2.WINDOW_NORMAL)
-        # cv2.setWindowProperty("Screen", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
-        # cv2.imshow("Screen", img)
-        # cv2.waitKey(10)
-
+        try:
+            q.put_nowait(filename)
+        except queue.Full:
+            print('queue full')
+    else:
         os.remove(filename)
     return 'ok', 200
-
+# Turn-on the worker thread.
+threading.Thread(target=worker, daemon=True).start()
 app.run(host='0.0.0.0', port=3000)
