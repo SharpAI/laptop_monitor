@@ -10,6 +10,7 @@ import redis
 
 from img2vec_pytorch import Img2Vec
 from PIL import Image
+import cv2
 
 from LabelStudioClient import LabelStudioClient
 
@@ -77,6 +78,12 @@ def submit_image():
         # print(ids)
         # for x in range(len(ids)):
         #     red.set(str(ids[x]), paths[x])
+
+        # img = cv2.imread(filename, cv2.IMREAD_ANYCOLOR)
+        # cv2.namedWindow("Screen", cv2.WINDOW_NORMAL)
+        # cv2.setWindowProperty("Screen", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+        # cv2.imshow("Screen", img)
+        # cv2.waitKey(10)
 
         os.remove(filename)
     return 'ok', 200
