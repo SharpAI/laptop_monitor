@@ -10,3 +10,5 @@ sharpai-cli screen_monitor start
 
 ### Access streaming screen: http://localhost:8000
 ### Access labelstudio: http://localhost:8080
+
+![LabelStudio Screen Shot](images/Labelstudio_screen_shot.png)
